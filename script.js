@@ -3,40 +3,90 @@ document.addEventListener('DOMContentLoaded', () => {
     const winScreen = document.getElementById('win-screen');
     const nextLevelBtn = document.getElementById('next-level-btn');
     const title = document.getElementById('level-title');
+    const loadingOverlay = document.getElementById('loading-overlay');
     
-    const size = 4; 
-    let currentLevel = 1;
-    let tiles = [];
-    let solvedState = Array.from({length: size * size}, (_, i) => i); // [0, 1, ... 15]
-    let currentState = [];
+    const moveSound = document.getElementById('move-sound');
+    const backgroundMusic = document.getElementById('background-music');
+    
+    const muteButton = document.getElementById('mute-button');
+    const muteIcon = document.getElementById('mute-icon');     
 
-    // Avvio iniziale
+    let currentLevel = 1;
+    let currentGridSize; 
+    let tiles = [];
+    let solvedState = []; 
+    let currentState = [];
+    let isMuted = false;
+    let musicStarted = false; // Flag per controllare se la musica è già partita
+
+
+    // --- NUOVA LOGICA PER L'AUTOPLAY DELLA MUSICA ---
+    // Avvia la musica solo dopo la prima interazione dell'utente con la pagina
+    function startBackgroundMusic() {
+        if (!musicStarted && !isMuted) {
+            backgroundMusic.volume = 0.4;
+            backgroundMusic.loop = true; // Assicurati che sia in loop
+            backgroundMusic.muted = false; // Assicurati che non sia muta all'inizio
+            backgroundMusic.play().then(() => {
+                musicStarted = true;
+                console.log("Musica di sottofondo avviata con successo.");
+            }).catch(e => {
+                console.error("Impossibile avviare la musica di sottofondo (potrebbe essere bloccato dall'autoplay):", e);
+            });
+        }
+    }
+
+    // Aggiungi un listener al body che si attiva solo una volta
+    document.body.addEventListener('click', startBackgroundMusic, { once: true });
+    document.body.addEventListener('touchstart', startBackgroundMusic, { once: true }); // Per dispositivi touch
+
+
     loadImageAndStart(currentLevel);
 
-    // Gestione click "Prossimo Livello"
     nextLevelBtn.addEventListener('click', () => {
         winScreen.classList.add('hidden');
         currentLevel++;
         loadImageAndStart(currentLevel);
     });
 
+    muteButton.addEventListener('click', () => {
+        isMuted = !isMuted; 
+        moveSound.muted = isMuted; 
+        backgroundMusic.muted = isMuted; 
+        muteIcon.textContent = isMuted ? '🔇' : '🔊'; 
+        muteButton.setAttribute('aria-label', isMuted ? 'Attiva audio' : 'Disattiva audio');
+        
+        // Se si demuta, prova a far partire la musica (se non era già partita)
+        if (!isMuted && !musicStarted) {
+             startBackgroundMusic(); // Prova ad avviarla
+        } else if (!isMuted && backgroundMusic.paused) {
+             // Se era già partita ma in pausa (es. utente l'ha messa in pausa manualmente)
+             backgroundMusic.play().catch(e => console.log("Errore riproduzione musica al demute:", e));
+        }
+    });
+
     function loadImageAndStart(level) {
+        loadingOverlay.classList.remove('hidden');
+
+        currentGridSize = (level === 1) ? 3 : 4;
+        document.documentElement.style.setProperty('--current-grid-size', currentGridSize);
+
+        solvedState = Array.from({length: currentGridSize * currentGridSize}, (_, i) => i);
+        
         const imgName = `img_puzzle${level}.jpg`;
         const imgTester = new Image();
         
-        // Mostra loading o feedback visivo se vuoi, qui lo facciamo rapido
         imgTester.onload = function() {
-            // Se l'immagine esiste, impostala e avvia
             document.documentElement.style.setProperty('--current-image', `url('${imgName}')`);
-            title.textContent = `Livello ${level}`;
+            title.textContent = `Tile Puzzle - Livello ${level} (${currentGridSize}x${currentGridSize})`;
             initGame();
+            loadingOverlay.classList.add('hidden');
         };
 
         imgTester.onerror = function() {
-            // Se l'immagine NON esiste (siamo arrivati alla fine), torna alla 1
-            console.log("Immagine non trovata, torno al livello 1");
+            console.log(`Immagine ${imgName} non trovata, torno al livello 1`);
             currentLevel = 1;
-            loadImageAndStart(1); // Ricorsione sicura verso la 1
+            loadImageAndStart(1); 
         };
 
         imgTester.src = imgName;
@@ -44,10 +94,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initGame() {
         currentState = [...solvedState];
-        // Mescola finché non è risolvibile e non è già risolto
+        const emptyTileValue = (currentGridSize * currentGridSize) - 1;
+
         do {
             shuffle(currentState);
-        } while (!isSolvable(currentState) || isSolved());
+        } while (!isSolvable(currentState, currentGridSize) || isSolved());
         
         renderBoard();
     }
@@ -59,22 +110,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Controllo risolvibilità (inversioni)
-    function isSolvable(arr) {
+    function isSolvable(arr, size) {
         let inversions = 0;
-        const emptyIndex = arr.indexOf(15); 
+        const emptyTileValue = (size * size) - 1; 
+        const emptyIndex = arr.indexOf(emptyTileValue); 
         const emptyRowFromBottom = size - Math.floor(emptyIndex / size);
 
         for (let i = 0; i < arr.length; i++) {
             for (let j = i + 1; j < arr.length; j++) {
-                if (arr[i] !== 15 && arr[j] !== 15 && arr[i] > arr[j]) {
+                if (arr[i] !== emptyTileValue && arr[j] !== emptyTileValue && arr[i] > arr[j]) {
                     inversions++;
                 }
             }
         }
-
-        if (emptyRowFromBottom % 2 === 0) return inversions % 2 === 1;
-        else return inversions % 2 === 0;
+        
+        if (size % 2 === 1) { 
+            return inversions % 2 === 0;
+        } else { 
+            if (emptyRowFromBottom % 2 === 1) { 
+                return inversions % 2 === 0;
+            } else { 
+                return inversions % 2 === 1;
+            }
+        }
     }
 
     function isSolved() {
@@ -83,20 +141,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBoard() {
         board.innerHTML = '';
+        const emptyTileValue = (currentGridSize * currentGridSize) - 1;
+
         currentState.forEach((val, index) => {
             const tile = document.createElement('div');
             tile.classList.add('tile');
             
-            // Posiziona lo sfondo
-            const row = Math.floor(val / size);
-            const col = val % size;
-            const bgX = col * (100 / (size - 1));
-            const bgY = row * (100 / (size - 1));
+            const row = Math.floor(val / currentGridSize);
+            const col = val % currentGridSize;
+            
+            const bgX = col * (100 / (currentGridSize - 1));
+            const bgY = row * (100 / (currentGridSize - 1));
             tile.style.backgroundPosition = `${bgX}% ${bgY}%`;
 
-            // Aggiungi il numero sovrapposto
-            // Nota: val va da 0 a 14. Aggiungiamo 1 per mostrare 1-15.
-            if (val !== 15) {
+            if (val !== emptyTileValue) {
                 const numSpan = document.createElement('span');
                 numSpan.classList.add('number');
                 numSpan.textContent = val + 1; 
@@ -113,20 +171,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function moveTile(index) {
-        const emptyIndex = currentState.indexOf(15);
-        const row = Math.floor(index / size);
-        const col = index % size;
-        const emptyRow = Math.floor(emptyIndex / size);
-        const emptyCol = emptyIndex % size;
+        const emptyTileValue = (currentGridSize * currentGridSize) - 1;
+        const emptyIndex = currentState.indexOf(emptyTileValue);
+        
+        const row = Math.floor(index / currentGridSize);
+        const col = index % currentGridSize;
+        const emptyRow = Math.floor(emptyIndex / currentGridSize);
+        const emptyCol = emptyIndex % currentGridSize;
 
-        // Controlla adiacenza
         if (Math.abs(row - emptyRow) + Math.abs(col - emptyCol) === 1) {
-            // Scambia
+            // Se la musica non è ancora partita, falla partire al primo click utile
+            if (!musicStarted) {
+                startBackgroundMusic();
+            }
+
+            if (moveSound && !isMuted) { 
+                moveSound.currentTime = 0;
+                moveSound.play().catch(e => console.log("Errore riproduzione audio:", e));
+            }
+
             [currentState[index], currentState[emptyIndex]] = [currentState[emptyIndex], currentState[index]];
             renderBoard();
             
-            // Controlla vittoria dopo render (per aggiornare UI)
-            // Piccolo timeout per permettere all'occhio di vedere l'ultimo movimento
             if (isSolved()) {
                 setTimeout(handleWin, 150);
             }
@@ -134,14 +200,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleWin() {
-        // Mostra il pezzo mancante
         const emptyTile = document.getElementById('empty-tile');
         if (emptyTile) {
             emptyTile.classList.remove('empty');
-            emptyTile.innerHTML = ''; // Rimuovi eventuali numeri se presenti per sbaglio (non dovrebbero esserci)
+            emptyTile.innerHTML = '';
         }
         
-        // Mostra schermata vittoria
         setTimeout(() => {
             winScreen.classList.remove('hidden');
         }, 500);

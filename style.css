@@ -1,78 +1,126 @@
 :root {
-    --board-size: 90vmin;
-    --tile-size: calc(var(--board-size) / 4);
+    --board-max-size: 600px;
     --gap: 2px;
-    /* Variabile per l'immagine dinamica */
     --current-image: url('img_puzzle1.jpg'); 
+    --current-grid-size: 3; 
 }
 
 body {
     margin: 0;
-    background-color: #2c3e50;
+    background-image: url('background.jpg'); 
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: white;
-    overflow: hidden;
-    user-select: none; /* Previene selezione testo */
+    overflow: hidden; 
+    user-select: none;
+    touch-action: manipulation; /* Migliora reattività touch, prevenendo zoom/scroll non voluti */
 }
 
 .game-wrapper {
     text-align: center;
     position: relative;
+    /* Rimuoviamo il padding orizzontale, lo gestiamo con max-width */
+    padding: 10px 0; /* Minimo padding verticale per non rubare spazio */
+    max-width: calc(var(--board-max-size) + 40px); /* Larghezza massima wrapper */
+    width: 100%; /* Occupa tutta la larghezza disponibile */
 }
 
 h1 {
-    margin-bottom: 10px;
-    font-size: 1.5rem;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    margin-top: 0; /* Nessun margine superiore */
+    margin-bottom: 8px; /* Margine inferiore ridotto */
+    font-size: clamp(1.1rem, 4vw, 1.1rem); /* Titolo più piccolo e responsivo */
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
 }
 
+#mute-button {
+    background-color: rgba(0, 0, 0, 0.4);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 3px 6px; /* Padding ridotto */
+    font-size: 0.8rem; /* Font più piccolo */
+    border-radius: 20px;
+    cursor: pointer;
+    margin-bottom: 12px; /* Margine inferiore ridotto */
+    display: inline-flex;
+    align-items: center;
+    gap: 6px; /* Spazio ridotto */
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+#mute-button:hover {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+#mute-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+}
+
+
 #game-board {
-    width: var(--board-size);
-    height: var(--board-size);
-    max-width: 600px;
-    max-height: 600px;
-    background-color: #34495e;
+    width: min(90vmin, var(--board-max-size));
+    height: min(90vmin, var(--board-max-size));
+    
+    background-image: url('wood_tile.jpg');
+    background-size: cover;
+    background-position: center;
+    
+    border: 15px solid #4a2c0f; 
+    border-image: url('wood_tile.jpg') 30 / 15px stretch;
+    
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(4, 1fr);
+    grid-template-columns: repeat(var(--current-grid-size), 1fr); 
+    grid-template-rows: repeat(var(--current-grid-size), 1fr);
+    
     gap: var(--gap);
-    border: 5px solid #fff;
+    
     box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-    border-radius: 8px;
+    
+    border-radius: 12px; 
+    overflow: hidden; 
+    
     position: relative;
+    padding: var(--gap);
+    margin: 0 auto; /* Centra orizzontalmente la board */
 }
 
 .tile {
-    background-image: var(--current-image); /* Usa la variabile dinamica */
-    background-size: 400% 400%;
-    cursor: pointer;
-    position: relative; /* Necessario per posizionare il numero */
+    background-image: var(--current-image); 
+    background-size: calc(var(--current-grid-size) * 100%) calc(var(--current-grid-size) * 100%);
+    
+    cursor: grab; 
+    position: relative; 
     border-radius: 2px;
-    transition: transform 0.1s;
+    transition: transform 0.1s ease-out;
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
 }
 
 .tile:active {
-    transform: scale(0.95);
+    transform: scale(0.96);
+    box-shadow: 0 0 5px rgba(255,255,255,0.6);
 }
 
-/* STILE DEI NUMERI */
 .number {
     position: absolute;
-    top: 5px;
-    left: 5px;
-    font-size: 1.2rem;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(1.5rem, 6vw, 2.5rem);
     font-weight: bold;
-    color: rgba(255, 255, 255, 0.7); /* Bianco semitrasparente */
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8); /* Ombra scura per contrasto */
-    pointer-events: none; /* Il click passa attraverso il numero */
+    color: rgba(255, 255, 255, 0.6);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    pointer-events: none; 
     z-index: 2;
 }
 
-/* Classe per il pezzo vuoto */
 .empty {
     background: transparent !important;
     cursor: default;
@@ -80,22 +128,22 @@ h1 {
 }
 
 .empty .number {
-    display: none; /* Nascondi numero sul tassello vuoto */
+    display: none; 
 }
 
-/* Schermate Overlay (Vittoria / Caricamento) */
-#win-screen, #loading-screen {
+#win-screen, #loading-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 100;
-    border-radius: 8px;
+    border-radius: 8px; 
+    animation: fadeIn 0.3s ease;
 }
 
 .hidden {
@@ -103,32 +151,50 @@ h1 {
 }
 
 .win-content {
-    background: white;
-    color: #333;
-    padding: 25px;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    padding: 30px;
     border-radius: 15px;
-    box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
     animation: popIn 0.4s ease;
+    text-align: center;
+}
+
+.win-content h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.win-content p {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
 }
 
 button {
-    background-color: #e67e22;
+    background-color: #2ecc71;
     color: white;
     border: none;
-    padding: 12px 25px;
-    font-size: 1.1rem;
-    border-radius: 25px;
+    padding: 14px 30px;
+    font-size: 1.2rem;
+    border-radius: 30px;
     cursor: pointer;
     margin-top: 15px;
     font-weight: bold;
-    transition: background 0.3s;
+    transition: background 0.3s ease, transform 0.1s ease;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
 }
 
 button:hover {
-    background-color: #d35400;
+    background-color: #27ae60;
+    transform: translateY(-2px);
 }
 
 @keyframes popIn {
     0% { transform: scale(0.5); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
 }

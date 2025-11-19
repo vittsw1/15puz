@@ -3,14 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Puzzle Bici - Livelli</title>
+    <title>Tile Puzzle</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="game-wrapper">
-        <h1 id="level-title">Livello 1</h1>
+        <h1 id="level-title">Tile Puzzle - Livello 1 (3x3)</h1> 
         
+        <button id="mute-button" aria-label="Attiva/disattiva audio">
+            <span id="mute-icon">🔊</span> Audio
+        </button>
+
         <div id="game-board">
             </div>
 
@@ -22,11 +26,12 @@
             </div>
         </div>
 
-        <div id="loading-screen" class="hidden">
+        <div id="loading-overlay" class="hidden">
             <p>Caricamento immagine...</p>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <audio id="move-sound" src="sound.mp3" preload="auto"></audio>
+    <audio id="background-music" src="music.mp3" loop preload="auto"></audio> <script src="script.js"></script>
 </body>
 </html>
